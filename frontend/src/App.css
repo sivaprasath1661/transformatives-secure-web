@@ -1,0 +1,21 @@
+.app {
+  min-height: 100vh;
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background-color: #f4f6f8;
+  color: #253444;
+}
+
+header {
+  background-color: #183b56;
+  color: white;
+  padding: 30px;
+}
+
+header h1 {
+  margin: 0 0 12px;
+}
+
+main {
+  padding: 60px 20px;
+}
