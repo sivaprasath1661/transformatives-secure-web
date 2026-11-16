@@ -6,16 +6,30 @@
   color: #253444;
 }
 
-header {
+.navbar {
   background-color: #183b56;
   color: white;
-  padding: 30px;
+  padding: 24px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-header h1 {
-  margin: 0 0 12px;
+.navbar-brand {
+  font-size: 26px;
+  font-weight: bold;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 30px;
+}
+
+.navbar-links span {
+  cursor: default;
 }
 
 main {
-  padding: 60px 20px;
+  text-align: center;
+  padding: 80px 20px;
 }

@@ -1,15 +1,13 @@
+import Navbar from './components/Navbar';
 import './App.css';
 
 function App() {
   return (
     <div className="app">
-      <header>
-        <h1>TRANSFORMATIVES</h1>
-        <p>Secure Logistics Management System</p>
-      </header>
+      <Navbar />
 
       <main>
-        <h2>Welcome to TRANSFORMATIVES</h2>
+        <h1>Welcome to TRANSFORMATIVES</h1>
         <p>
           A platform for managing shipments,
           customers and carriers securely.
