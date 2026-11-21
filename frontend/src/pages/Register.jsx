@@ -13,16 +13,19 @@ function Register() {
 
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
+    setForm((previous) => ({
+      ...previous,
       [e.target.name]: e.target.value,
-    });
+    }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
+
     setError('');
     setMessage('');
 
@@ -36,6 +39,11 @@ function Register() {
       return;
     }
 
+    if (form.username.trim().length < 3) {
+      setError('Username must contain at least 3 characters.');
+      return;
+    }
+
     if (form.password.length < 8) {
       setError('Password must contain at least 8 characters.');
       return;
@@ -46,7 +54,52 @@ function Register() {
       return;
     }
 
-    setMessage('To be impl...');
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        'http://localhost:8181/api/auth/register',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fullName: form.name.trim(),
+            email: form.email.trim(),
+            username: form.username.trim(),
+            password: form.password,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 409) {
+          setError('Username or email is already registered.');
+        } else if (response.status === 400) {
+          setError('Invalid registration details. Please check your inputs.');
+        } else {
+          setError('Registration failed. Please try again.');
+        }
+        return;
+      }
+
+      const data = await response.json();
+
+      setMessage(`Account created successfully for ${data.username}!`);
+
+      setForm({
+        name: '',
+        email: '',
+        username: '',
+        password: '',
+        confirmPassword: '',
+      });
+    } catch {
+      setError('Unable to connect to the server. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -102,11 +155,20 @@ function Register() {
           autoComplete="new-password"
         />
 
-        {error && <p className="register-error" role="alert">{error}</p>}
-        {message && <p className="register-message" role="status">{message}</p>}
+        {error && (
+          <p className="register-error" role="alert">{error}</p>
+        )}
 
-        <button type="submit" className="register-button">
-          Register
+        {message && (
+          <p className="register-message" role="status">{message}</p>
+        )}
+
+        <button
+          type="submit"
+          className="register-button"
+          disabled={loading}
+        >
+          {loading ? 'Registering...' : 'Register'}
         </button>
       </form>
     </main>
