@@ -5,6 +5,7 @@ import com.transformatives.backend.dto.RegisterRequest;
 import com.transformatives.backend.dto.RegisterResponse;
 import com.transformatives.backend.entity.User;
 import com.transformatives.backend.repository.UserRepository;
+import com.transformatives.backend.dto.LoginRequest;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -84,5 +85,15 @@ public class UserService {
                     "Username or email is already registered"
             );
         }
+    }
+    // Verify login credentials against the stored BCrypt hash
+    public boolean verifyCredentials(LoginRequest request) {
+
+        return userRepository.findByUsername(request.username().trim())
+                .map(user -> passwordEncoder.matches(
+                        request.password(),
+                        user.getPasswordHash()
+                ))
+                .orElse(false);
     }
 }

@@ -1,8 +1,8 @@
-
 package com.transformatives.backend.controller;
 
 import com.transformatives.backend.dto.RegisterRequest;
 import com.transformatives.backend.dto.RegisterResponse;
+import com.transformatives.backend.dto.LoginRequest;
 import com.transformatives.backend.service.UserService;
 
 import jakarta.validation.Valid;
@@ -31,5 +31,18 @@ public class AuthController {
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<String> login(
+            @Valid @RequestBody LoginRequest request) {
+
+        if (!userService.verifyCredentials(request)) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body("Invalid username or password");
+        }
+
+        return ResponseEntity.ok("Credentials verified");
     }
 }
