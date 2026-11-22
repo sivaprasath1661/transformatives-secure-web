@@ -57,12 +57,29 @@ function Register() {
     setLoading(true);
 
     try {
+      // Obtain the CSRF token and associated session cookie
+      const csrfResponse = await fetch(
+        'http://localhost:8181/api/auth/csrf',
+        {
+          credentials: 'include',
+        }
+      );
+
+      if (!csrfResponse.ok) {
+        throw new Error('Unable to retrieve CSRF token');
+      }
+
+      const csrf = await csrfResponse.json();
+
+      // Submit registration with CSRF protection
       const response = await fetch(
         'http://localhost:8181/api/auth/register',
         {
           method: 'POST',
+          credentials: 'include',
           headers: {
             'Content-Type': 'application/json',
+            [csrf.headerName]: csrf.token,
           },
           body: JSON.stringify({
             fullName: form.name.trim(),
@@ -78,6 +95,8 @@ function Register() {
           setError('Username or email is already registered.');
         } else if (response.status === 400) {
           setError('Invalid registration details. Please check your inputs.');
+        } else if (response.status === 403) {
+          setError('Security verification failed. Please try again.');
         } else {
           setError('Registration failed. Please try again.');
         }
@@ -95,6 +114,7 @@ function Register() {
         password: '',
         confirmPassword: '',
       });
+
     } catch {
       setError('Unable to connect to the server. Please try again.');
     } finally {

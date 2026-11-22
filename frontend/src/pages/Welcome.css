@@ -59,3 +59,9 @@
 .welcome-home:hover {
   background: #285474;
 }
+
+.welcome-home {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}

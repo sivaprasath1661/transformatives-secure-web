@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 public class UserService {
@@ -87,13 +88,12 @@ public class UserService {
         }
     }
     // Verify login credentials against the stored BCrypt hash
-    public boolean verifyCredentials(LoginRequest request) {
+    public Optional<User> authenticate(LoginRequest request) {
 
-        return userRepository.findByUsername(request.username().trim())
-                .map(user -> passwordEncoder.matches(
-                        request.password(),
-                        user.getPasswordHash()
-                ))
-                .orElse(false);
-    }
+    return userRepository.findByUsername(request.username().trim())
+            .filter(user -> passwordEncoder.matches(
+                    request.password(),
+                    user.getPasswordHash()
+            ));
+}
 }
