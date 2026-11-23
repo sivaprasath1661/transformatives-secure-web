@@ -1,4 +1,3 @@
-
 package com.transformatives.backend.config;
 
 import java.util.List;
@@ -25,44 +24,53 @@ public class SecurityConfig {
             throws Exception {
 
         http
-            .cors(cors -> {})
-            .csrf(csrf -> {})
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(
-                    SessionCreationPolicy.IF_REQUIRED
+                .cors(cors -> {
+                })
+                .csrf(csrf -> {
+                })
+                .sessionManagement(session
+                        -> session.sessionCreationPolicy(
+                                SessionCreationPolicy.IF_REQUIRED
+                        )
                 )
-            )
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.GET,
-                    "/api/health",
-                    "/api/auth/csrf"
-                ).permitAll()
-                .requestMatchers(HttpMethod.POST,
-                    "/api/auth/register",
-                    "/api/auth/login"
-                ).permitAll()
-                .anyRequest().authenticated()
-            )
-            .exceptionHandling(ex -> ex
-                .authenticationEntryPoint(
-                    new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/health",
+                                "/api/auth/csrf"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/auth/register",
+                                "/api/auth/login"
+                        ).permitAll()
+                        // Restrict customer endpoints
+                        .requestMatchers("/api/customer/**")
+                        .hasRole("CUSTOMER")
+                        // Restrict administrator endpoints
+                        .requestMatchers("/api/admin/**")
+                        .hasRole("ADMIN")
+                        // All remaining endpoints require authentication
+                        .anyRequest().authenticated()
                 )
-            )
-            .logout(logout -> logout
-                .logoutUrl("/api/auth/logout")
-                .addLogoutHandler(
-                    new CookieClearingLogoutHandler("JSESSIONID")
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(
+                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)
+                        )
                 )
-                .invalidateHttpSession(true)
-                .clearAuthentication(true)
-                .logoutSuccessHandler(
-                    new HttpStatusReturningLogoutSuccessHandler(
-                        HttpStatus.OK
-                    )
+                .logout(logout -> logout
+                        .logoutUrl("/api/auth/logout")
+                        .addLogoutHandler(
+                                new CookieClearingLogoutHandler("JSESSIONID")
+                        )
+                        .invalidateHttpSession(true)
+                        .clearAuthentication(true)
+                        .logoutSuccessHandler(
+                                new HttpStatusReturningLogoutSuccessHandler(
+                                        HttpStatus.OK
+                                )
+                        )
                 )
-            )
-            .formLogin(form -> form.disable())
-            .httpBasic(basic -> basic.disable());
+                .formLogin(form -> form.disable())
+                .httpBasic(basic -> basic.disable());
 
         return http.build();
     }
@@ -72,21 +80,21 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(
-            List.of("http://localhost:5173")
+                List.of("http://localhost:5173")
         );
 
         config.setAllowedMethods(
-            List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                List.of("GET", "POST", "PUT", "DELETE", "OPTIONS")
         );
 
         config.setAllowedHeaders(
-            List.of("Content-Type", "X-CSRF-TOKEN")
+                List.of("Content-Type", "X-CSRF-TOKEN")
         );
 
         config.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source
+                = new UrlBasedCorsConfigurationSource();
 
         source.registerCorsConfiguration("/api/**", config);
 
