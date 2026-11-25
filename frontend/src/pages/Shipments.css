@@ -1,0 +1,143 @@
+
+.shipments-page {
+  max-width: 1150px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  color: #193b56;
+}
+
+.shipments-header {
+  margin-bottom: 30px;
+}
+
+.shipments-header h1 {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.shipments-header p {
+  color: #64748b;
+}
+
+.shipments-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.shipment-panel {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+}
+
+.shipment-panel h2 {
+  font-size: 21px;
+  margin-bottom: 24px;
+}
+
+.shipment-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.shipment-panel label {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.shipment-panel input,
+.shipment-panel textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font: inherit;
+  background: white;
+  color: #193b56;
+}
+
+.shipment-panel button {
+  margin-top: 12px;
+  padding: 13px;
+  border: none;
+  border-radius: 6px;
+  background: #193b56;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+
+.shipment-panel button:hover {
+  background: #285474;
+}
+
+.shipment-panel button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.shipment-error,
+.shipment-success {
+  padding: 14px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+}
+
+.shipment-error {
+  color: #9f1239;
+  background: #fff1f2;
+}
+
+.shipment-success {
+  color: #166534;
+  background: #f0fdf4;
+}
+
+.tracking-result {
+  margin-top: 24px;
+  padding: 16px;
+  border-radius: 8px;
+  background: #f8fafc;
+  overflow-wrap: anywhere;
+}
+
+.tracking-result p {
+  margin-top: 10px;
+}
+
+.shipment-table-wrap {
+  overflow-x: auto;
+}
+
+.shipment-list table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.shipment-list th,
+.shipment-list td {
+  padding: 14px;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-wrap: anywhere;
+}
+
+.shipment-list th {
+  background: #f8fafc;
+}
+
+@media (max-width: 750px) {
+  .shipments-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .shipments-page {
+    padding: 24px 16px;
+  }
+}

@@ -107,21 +107,27 @@ function Welcome() {
         <p>Successfully logged in as {username}.</p>
 
         <p className="welcome-description">
-          Your logistics management journey starts here.
-          Shipment booking and tracking features are coming soon.
+          Book new shipments, track your deliveries and
+          manage your logistics activity in one place.
         </p>
+
+        <Link to="/shipments" className="welcome-home">
+          Manage My Shipments
+        </Link>
 
         {error && (
           <p className="login-error" role="alert">{error}</p>
         )}
 
-        <button
-          type="button"
-          className="welcome-home"
-          onClick={handleLogout}
-        >
-          Logout
-        </button>
+        <div style={{ marginTop: '20px' }}>
+          <button
+            type="button"
+            className="welcome-home"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
 
         <p>
           <Link to="/">Back to Home</Link>

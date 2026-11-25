@@ -1,46 +1,12 @@
+
 .app {
   min-height: 100vh;
   font-family: Arial, sans-serif;
-  text-align: center;
   background-color: #f4f6f8;
   color: #253444;
-}
-
-.navbar {
-  background-color: #183b56;
-  color: white;
-  padding: 24px 40px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.navbar-brand {
-  font-size: 26px;
-  font-weight: bold;
-}
-
-.navbar-links {
-  display: flex;
-  gap: 30px;
-}
-
-.navbar-links span {
-  cursor: default;
 }
 
 main {
   text-align: center;
   padding: 80px 20px;
-}
-
-
-.navbar-links a {
-  color: white;
-  text-decoration: none;
-}
-
-.navbar-links a:hover,
-.navbar-links a.active {
-  text-decoration: underline;
 }
