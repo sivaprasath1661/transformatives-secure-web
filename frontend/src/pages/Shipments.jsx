@@ -5,20 +5,29 @@ import './Shipments.css';
 
 const API = 'http://localhost:8181';
 
+const emptyForm = {
+  recipientName: '',
+  destinationCity: '',
+  deliveryAddress: '',
+};
+
+const statusLabels = {
+  PENDING: 'Pending',
+  IN_TRANSIT: 'In Transit',
+  DELIVERED: 'Delivered',
+  CANCELLED: 'Cancelled',
+};
+
 function Shipments() {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    recipientName: '',
-    destinationCity: '',
-    deliveryAddress: '',
-  });
-
+  const [form, setForm] = useState(emptyForm);
   const [shipments, setShipments] = useState([]);
   const [trackingNumber, setTrackingNumber] = useState('');
   const [trackedShipment, setTrackedShipment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [cancelling, setCancelling] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -65,6 +74,28 @@ function Shipments() {
     };
   }, [loadShipments]);
 
+  const refreshShipments = async () => {
+    const data = await loadShipments();
+
+    if (data !== null) {
+      setShipments(data);
+    }
+
+    return data;
+  };
+
+  const getCsrfToken = async () => {
+    const response = await fetch(`${API}/api/auth/csrf`, {
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error('Unable to obtain security token');
+    }
+
+    return response.json();
+  };
+
   const handleChange = (event) => {
     setForm((previous) => ({
       ...previous,
@@ -87,15 +118,7 @@ function Shipments() {
     setSaving(true);
 
     try {
-      const csrfResponse = await fetch(`${API}/api/auth/csrf`, {
-        credentials: 'include',
-      });
-
-      if (!csrfResponse.ok) {
-        throw new Error('Unable to obtain security token');
-      }
-
-      const csrf = await csrfResponse.json();
+      const csrf = await getCsrfToken();
 
       const response = await fetch(`${API}/api/customer/shipments`, {
         method: 'POST',
@@ -127,14 +150,11 @@ function Shipments() {
 
       const created = await response.json();
 
-      setMessage(`Shipment booked! Tracking ID: ${created.trackingNumber}`);
       setShipments((previous) => [created, ...previous]);
-
-      setForm({
-        recipientName: '',
-        destinationCity: '',
-        deliveryAddress: '',
-      });
+      setForm({ ...emptyForm });
+      setMessage(
+        `Shipment booked! Tracking ID: ${created.trackingNumber}`
+      );
     } catch {
       setError('Unable to connect to the shipment service.');
     } finally {
@@ -180,6 +200,98 @@ function Shipments() {
     }
   };
 
+  const handleCancel = async (shipment) => {
+    if (cancelling || shipment.status !== 'PENDING') return;
+
+    const confirmed = window.confirm(
+      `Cancel shipment ${shipment.trackingNumber}?`
+    );
+
+    if (!confirmed) return;
+
+    setError('');
+    setMessage('');
+    setCancelling(shipment.trackingNumber);
+
+    try {
+      const csrf = await getCsrfToken();
+
+      const response = await fetch(
+        `${API}/api/customer/shipments/${encodeURIComponent(
+          shipment.trackingNumber
+        )}/cancel`,
+        {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: {
+            [csrf.headerName]: csrf.token,
+          },
+        }
+      );
+
+      if (response.status === 401) {
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      if (response.status === 403) {
+        setError('Cancellation was not authorised.');
+        return;
+      }
+
+      if (response.status === 404) {
+        setError('Shipment not found in your account.');
+        await refreshShipments();
+        return;
+      }
+
+      if (response.status === 409) {
+        setError('Only pending shipments can be cancelled.');
+        await refreshShipments();
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error('Cancellation failed');
+      }
+
+      const updated = await response.json();
+
+      // Refresh from the server after the status change.
+      await refreshShipments();
+
+      if (
+        trackedShipment?.trackingNumber === updated.trackingNumber
+      ) {
+        setTrackedShipment(updated);
+      }
+
+      setMessage(
+        `Shipment ${updated.trackingNumber} was cancelled.`
+      );
+    } catch {
+      setError(
+        'Unable to complete cancellation. Please refresh and check the status.'
+      );
+    } finally {
+      setCancelling('');
+    }
+  };
+
+  const countStatus = (status) =>
+    shipments.filter((shipment) => shipment.status === status).length;
+
+  const summary = [
+    { label: 'Total Shipments', count: shipments.length },
+    { label: 'Pending', count: countStatus('PENDING') },
+    { label: 'In Transit', count: countStatus('IN_TRANSIT') },
+    { label: 'Delivered', count: countStatus('DELIVERED') },
+    { label: 'Cancelled', count: countStatus('CANCELLED') },
+  ];
+
+  const formatStatus = (status) =>
+    statusLabels[status] || status.replaceAll('_', ' ');
+
   return (
     <main className="shipments-page">
       <header className="shipments-header">
@@ -187,8 +299,24 @@ function Shipments() {
         <p>Book, manage and track your deliveries.</p>
       </header>
 
-      {error && <p className="shipment-error" role="alert">{error}</p>}
-      {message && <p className="shipment-success" role="status">{message}</p>}
+      {error && (
+        <p className="shipment-error" role="alert">{error}</p>
+      )}
+
+      {message && (
+        <p className="shipment-success" role="status">
+          {message}
+        </p>
+      )}
+
+      <section className="shipment-summary" aria-label="Shipment summary">
+        {summary.map((item) => (
+          <div className="shipment-stat" key={item.label}>
+            <span>{item.label}</span>
+            <strong>{loading ? '—' : item.count}</strong>
+          </div>
+        ))}
+      </section>
 
       <div className="shipments-layout">
         <section className="shipment-panel">
@@ -240,7 +368,9 @@ function Shipments() {
             <input
               id="trackingNumber"
               value={trackingNumber}
-              onChange={(e) => setTrackingNumber(e.target.value)}
+              onChange={(event) =>
+                setTrackingNumber(event.target.value)
+              }
               placeholder="TRF-XXXXXXXXXXXX"
             />
 
@@ -250,10 +380,22 @@ function Shipments() {
           {trackedShipment && (
             <div className="tracking-result">
               <h3>Shipment Details</h3>
-              <p><strong>Tracking:</strong> {trackedShipment.trackingNumber}</p>
-              <p><strong>Recipient:</strong> {trackedShipment.recipientName}</p>
-              <p><strong>Destination:</strong> {trackedShipment.destinationCity}</p>
-              <p><strong>Status:</strong> {trackedShipment.status}</p>
+              <p>
+                <strong>Tracking:</strong>{' '}
+                {trackedShipment.trackingNumber}
+              </p>
+              <p>
+                <strong>Recipient:</strong>{' '}
+                {trackedShipment.recipientName}
+              </p>
+              <p>
+                <strong>Destination:</strong>{' '}
+                {trackedShipment.destinationCity}
+              </p>
+              <p>
+                <strong>Status:</strong>{' '}
+                {formatStatus(trackedShipment.status)}
+              </p>
             </div>
           )}
         </section>
@@ -275,15 +417,39 @@ function Shipments() {
                   <th>Recipient</th>
                   <th>Destination</th>
                   <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
+
               <tbody>
                 {shipments.map((shipment) => (
                   <tr key={shipment.trackingNumber}>
                     <td>{shipment.trackingNumber}</td>
                     <td>{shipment.recipientName}</td>
                     <td>{shipment.destinationCity}</td>
-                    <td>{shipment.status}</td>
+                    <td>
+                      <span
+                        className={`shipment-status status-${shipment.status.toLowerCase()}`}
+                      >
+                        {formatStatus(shipment.status)}
+                      </span>
+                    </td>
+                    <td>
+                      {shipment.status === 'PENDING' ? (
+                        <button
+                          type="button"
+                          className="shipment-cancel-button"
+                          disabled={Boolean(cancelling)}
+                          onClick={() => handleCancel(shipment)}
+                        >
+                          {cancelling === shipment.trackingNumber
+                            ? 'Cancelling...'
+                            : 'Cancel'}
+                        </button>
+                      ) : (
+                        <span className="shipment-no-action">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

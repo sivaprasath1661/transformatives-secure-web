@@ -53,6 +53,16 @@ public class Shipment {
         this.status = "PENDING";
     }
 
+    public void cancel() {
+        if (!"PENDING".equals(status)) {
+            throw new IllegalStateException(
+                    "Only pending shipments can be cancelled"
+            );
+        }
+
+        this.status = "CANCELLED";
+    }
+
     public Long getId() {
         return id;
     }

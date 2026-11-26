@@ -61,16 +61,50 @@ public class ShipmentService {
             String trackingNumber,
             String username) {
 
-        Shipment shipment = shipmentRepository
+        Shipment shipment = findOwnedShipment(
+                trackingNumber,
+                username
+        );
+
+        return toResponse(shipment);
+    }
+
+    @Transactional
+    public ShipmentResponse cancel(
+            String trackingNumber,
+            String username) {
+
+        Shipment shipment = findOwnedShipment(
+                trackingNumber,
+                username
+        );
+
+        try {
+            shipment.cancel();
+        } catch (IllegalStateException exception) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Only pending shipments can be cancelled"
+            );
+        }
+
+        // The managed entity is updated by JPA on transaction commit.
+        return toResponse(shipment);
+    }
+
+    private Shipment findOwnedShipment(
+            String trackingNumber,
+            String username) {
+
+        return shipmentRepository
                 .findByTrackingNumberAndOwnerUsername(
-                        trackingNumber, username
+                        trackingNumber,
+                        username
                 )
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Shipment not found"
                 ));
-
-        return toResponse(shipment);
     }
 
     private ShipmentResponse toResponse(Shipment shipment) {
