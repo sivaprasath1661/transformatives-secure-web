@@ -10,11 +10,11 @@ function Navbar() {
   const location = useLocation();
 
   const [authenticated, setAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [checking, setChecking] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState('');
 
-  // Check the session whenever the user changes pages
   useEffect(() => {
     const controller = new AbortController();
 
@@ -27,12 +27,26 @@ function Navbar() {
           signal: controller.signal,
         });
 
+        if (!response.ok) {
+          setAuthenticated(false);
+          setIsAdmin(false);
+          return;
+        }
+
+        setAuthenticated(true);
+
+        const adminResponse = await fetch(`${API}/api/admin/access`, {
+          credentials: 'include',
+          signal: controller.signal,
+        });
+
         if (!controller.signal.aborted) {
-          setAuthenticated(response.ok);
+          setIsAdmin(adminResponse.ok);
         }
       } catch (err) {
         if (err.name !== 'AbortError') {
           setAuthenticated(false);
+          setIsAdmin(false);
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -76,8 +90,8 @@ function Navbar() {
       }
 
       setAuthenticated(false);
+      setIsAdmin(false);
       navigate('/login', { replace: true });
-
     } catch {
       setError('Logout failed. Please try again.');
     } finally {
@@ -104,13 +118,24 @@ function Navbar() {
           {!checking && (
             authenticated ? (
               <>
-                <NavLink to="/welcome" className={navClass}>
-                  Dashboard
-                </NavLink>
+                {isAdmin ? (
+                  <NavLink
+                    to="/admin/shipments"
+                    className={navClass}
+                  >
+                    Admin Dashboard
+                  </NavLink>
+                ) : (
+                  <>
+                    <NavLink to="/welcome" className={navClass}>
+                      Dashboard
+                    </NavLink>
 
-                <NavLink to="/shipments" className={navClass}>
-                  My Shipments
-                </NavLink>
+                    <NavLink to="/shipments" className={navClass}>
+                      My Shipments
+                    </NavLink>
+                  </>
+                )}
 
                 <button
                   type="button"

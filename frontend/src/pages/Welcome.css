@@ -65,3 +65,101 @@
   cursor: pointer;
   font: inherit;
 }
+
+
+/* Administrator Welcome Screen */
+
+.welcome-admin-card {
+  max-width: 720px;
+  padding: 48px;
+}
+
+.welcome-admin-card .welcome-icon {
+  background: #e4f5ef;
+  color: #20856e;
+}
+
+.welcome-role-label {
+  display: inline-block;
+  margin: 20px 0 12px;
+  color: #258a80;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.welcome-admin-card h1 {
+  font-size: clamp(26px, 3vw, 36px);
+}
+
+.welcome-admin-features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 30px 0;
+  text-align: left;
+}
+
+.welcome-admin-features > div {
+  padding: 18px 14px;
+  background: #f4f8fa;
+  border: 1px solid #e1e9ee;
+  border-radius: 10px;
+}
+
+.welcome-admin-features span {
+  display: block;
+  margin-bottom: 10px;
+  color: #2d9b91;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.welcome-admin-features strong {
+  display: block;
+  color: #193b56;
+  font-size: 14px;
+}
+
+.welcome-admin-primary {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.welcome-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.welcome-logout {
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.welcome-logout:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.welcome-back-link {
+  color: #285474;
+  text-decoration: none;
+}
+
+.welcome-back-link:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 600px) {
+  .welcome-admin-card {
+    padding: 28px 20px;
+  }
+
+  .welcome-admin-features {
+    grid-template-columns: 1fr;
+  }
+}

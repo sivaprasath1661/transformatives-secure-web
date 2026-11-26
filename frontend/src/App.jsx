@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Welcome from './pages/Welcome';
 import Shipments from './pages/Shipments';
+import AdminShipments from './pages/AdminShipments';
 import './App.css';
 
 function App() {
@@ -20,6 +21,10 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/shipments" element={<Shipments />} />
+          <Route
+            path="/admin/shipments"
+            element={<AdminShipments />}
+          />
         </Routes>
       </div>
     </BrowserRouter>
