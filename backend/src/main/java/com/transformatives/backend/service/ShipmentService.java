@@ -39,7 +39,10 @@ public class ShipmentService {
                 username,
                 request.recipientName().trim(),
                 request.destinationCity().trim(),
-                request.deliveryAddress().trim()
+                request.deliveryAddress().trim(),
+                request.recipientPhone().trim(),
+                request.postalCode().trim(),
+                request.packageType()
         );
 
         return toResponse(shipmentRepository.save(shipment));
@@ -61,12 +64,9 @@ public class ShipmentService {
             String trackingNumber,
             String username) {
 
-        Shipment shipment = findOwnedShipment(
-                trackingNumber,
-                username
+        return toResponse(
+                findOwnedShipment(trackingNumber, username)
         );
-
-        return toResponse(shipment);
     }
 
     @Transactional
@@ -88,7 +88,6 @@ public class ShipmentService {
             );
         }
 
-        // The managed entity is updated by JPA on transaction commit.
         return toResponse(shipment);
     }
 
@@ -114,7 +113,10 @@ public class ShipmentService {
                 shipment.getRecipientName(),
                 shipment.getDestinationCity(),
                 shipment.getDeliveryAddress(),
-                shipment.getStatus()
+                shipment.getStatus(),
+                shipment.getRecipientPhone(),
+                shipment.getPostalCode(),
+                shipment.getPackageType()
         );
     }
 }

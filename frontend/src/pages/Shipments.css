@@ -251,3 +251,28 @@
     padding: 20px;
   }
 }
+/* Ensure editable fields show the text cursor */
+.shipment-panel input,
+.shipment-panel textarea {
+  cursor: text;
+}
+
+.shipment-panel input:focus,
+.shipment-panel textarea:focus,
+.shipment-panel select {
+  border-color: #74c9bd;
+  outline: 2px solid #74c9bd;
+  outline-offset: 1px;
+}
+
+/* Package type dropdown */
+
+.shipment-panel select {
+  min-height: 45px;
+  cursor: pointer;
+}
+
+.shipment-panel select:focus-visible {
+  outline: 2px solid #74c9bd;
+  outline-offset: 2px;
+}

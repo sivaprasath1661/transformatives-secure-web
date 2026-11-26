@@ -34,6 +34,16 @@ public class Shipment {
     @Column(nullable = false, length = 20)
     private String status;
 
+    // Nullable to preserve existing shipment records.
+    @Column(name = "recipient_phone", length = 25)
+    private String recipientPhone;
+
+    @Column(name = "postal_code", length = 20)
+    private String postalCode;
+
+    @Column(name = "package_type", length = 30)
+    private String packageType;
+
     protected Shipment() {
         // Required by JPA
     }
@@ -43,14 +53,40 @@ public class Shipment {
             String ownerUsername,
             String recipientName,
             String destinationCity,
-            String deliveryAddress) {
+            String deliveryAddress,
+            String recipientPhone,
+            String postalCode,
+            String packageType) {
 
         this.trackingNumber = trackingNumber;
         this.ownerUsername = ownerUsername;
         this.recipientName = recipientName;
         this.destinationCity = destinationCity;
         this.deliveryAddress = deliveryAddress;
+        this.recipientPhone = recipientPhone;
+        this.postalCode = postalCode;
+        this.packageType = packageType;
         this.status = "PENDING";
+    }
+
+    // Keep existing tests and callers compatible.
+    public Shipment(
+            String trackingNumber,
+            String ownerUsername,
+            String recipientName,
+            String destinationCity,
+            String deliveryAddress) {
+
+        this(
+                trackingNumber,
+                ownerUsername,
+                recipientName,
+                destinationCity,
+                deliveryAddress,
+                null,
+                null,
+                null
+        );
     }
 
     public void cancel() {
@@ -89,5 +125,17 @@ public class Shipment {
 
     public String getStatus() {
         return status;
+    }
+
+    public String getRecipientPhone() {
+        return recipientPhone;
+    }
+
+    public String getPostalCode() {
+        return postalCode;
+    }
+
+    public String getPackageType() {
+        return packageType;
     }
 }

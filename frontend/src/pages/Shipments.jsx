@@ -7,9 +7,21 @@ const API = 'http://localhost:8181';
 
 const emptyForm = {
   recipientName: '',
+  recipientPhone: '',
   destinationCity: '',
   deliveryAddress: '',
+  postalCode: '',
+  packageType: '',
 };
+
+const packageTypes = [
+  { value: 'DOCUMENTS', label: 'Documents' },
+  { value: 'STANDARD_PARCEL', label: 'Standard Parcel' },
+  { value: 'FRAGILE', label: 'Fragile Items' },
+  { value: 'ELECTRONICS', label: 'Electronics' },
+  { value: 'CLOTHING', label: 'Clothing & Accessories' },
+  { value: 'OTHER', label: 'Other' },
+];
 
 const statusLabels = {
   PENDING: 'Pending',
@@ -115,6 +127,29 @@ function Shipments() {
       return;
     }
 
+    const phoneDigits = form.recipientPhone.replace(/\D/g, '');
+
+    if (
+      phoneDigits.length < 7 ||
+      phoneDigits.length > 15 ||
+      !/^\+?[0-9][0-9 ()-]*$/.test(form.recipientPhone.trim())
+    ) {
+      setError('Enter a valid recipient phone number.');
+      return;
+    }
+
+    const postalCode = form.postalCode.trim();
+
+    if (postalCode.length < 3 || postalCode.length > 20) {
+      setError('Postal code must contain 3 to 20 characters.');
+      return;
+    }
+
+    if (!packageTypes.some((type) => type.value === form.packageType)) {
+      setError('Select a valid package type.');
+      return;
+    }
+
     setSaving(true);
 
     try {
@@ -129,8 +164,11 @@ function Shipments() {
         },
         body: JSON.stringify({
           recipientName: form.recipientName.trim(),
+          recipientPhone: form.recipientPhone.trim(),
           destinationCity: form.destinationCity.trim(),
           deliveryAddress: form.deliveryAddress.trim(),
+          postalCode,
+          packageType: form.packageType,
         }),
       });
 
@@ -257,8 +295,13 @@ function Shipments() {
 
       const updated = await response.json();
 
-      // Refresh from the server after the status change.
-      await refreshShipments();
+      setShipments((previous) =>
+        previous.map((item) =>
+          item.trackingNumber === updated.trackingNumber
+            ? updated
+            : item
+        )
+      );
 
       if (
         trackedShipment?.trackingNumber === updated.trackingNumber
@@ -292,6 +335,10 @@ function Shipments() {
   const formatStatus = (status) =>
     statusLabels[status] || status.replaceAll('_', ' ');
 
+  const formatPackage = (type) =>
+    packageTypes.find((item) => item.value === type)?.label
+      || 'Not recorded';
+
   return (
     <main className="shipments-page">
       <header className="shipments-header">
@@ -309,7 +356,10 @@ function Shipments() {
         </p>
       )}
 
-      <section className="shipment-summary" aria-label="Shipment summary">
+      <section
+        className="shipment-summary"
+        aria-label="Shipment summary"
+      >
         {summary.map((item) => (
           <div className="shipment-stat" key={item.label}>
             <span>{item.label}</span>
@@ -323,27 +373,50 @@ function Shipments() {
           <h2>Book a Shipment</h2>
 
           <form onSubmit={handleBooking}>
-            <label htmlFor="recipientName">Recipient Name</label>
+            <label htmlFor="recipientName">
+              Recipient Name
+            </label>
             <input
               id="recipientName"
               name="recipientName"
               value={form.recipientName}
               onChange={handleChange}
               maxLength={100}
+              autoComplete="name"
               required
             />
 
-            <label htmlFor="destinationCity">Destination City</label>
+            <label htmlFor="recipientPhone">
+              Recipient Phone Number
+            </label>
+            <input
+              id="recipientPhone"
+              name="recipientPhone"
+              type="tel"
+              value={form.recipientPhone}
+              onChange={handleChange}
+              placeholder="+353 87 123 4567"
+              maxLength={25}
+              autoComplete="tel"
+              required
+            />
+
+            <label htmlFor="destinationCity">
+              Destination City
+            </label>
             <input
               id="destinationCity"
               name="destinationCity"
               value={form.destinationCity}
               onChange={handleChange}
               maxLength={100}
+              autoComplete="address-level2"
               required
             />
 
-            <label htmlFor="deliveryAddress">Delivery Address</label>
+            <label htmlFor="deliveryAddress">
+              Delivery Address
+            </label>
             <textarea
               id="deliveryAddress"
               name="deliveryAddress"
@@ -353,6 +426,38 @@ function Shipments() {
               rows={4}
               required
             />
+
+            <label htmlFor="postalCode">
+              Postal Code / Eircode
+            </label>
+            <input
+              id="postalCode"
+              name="postalCode"
+              value={form.postalCode}
+              onChange={handleChange}
+              placeholder="D02 X285"
+              maxLength={20}
+              autoComplete="postal-code"
+              required
+            />
+
+            <label htmlFor="packageType">
+              Package Type
+            </label>
+            <select
+              id="packageType"
+              name="packageType"
+              value={form.packageType}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Select package type</option>
+              {packageTypes.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
 
             <button type="submit" disabled={saving}>
               {saving ? 'Booking...' : 'Book Shipment'}
@@ -364,7 +469,9 @@ function Shipments() {
           <h2>Track Shipment</h2>
 
           <form onSubmit={handleTracking}>
-            <label htmlFor="trackingNumber">Tracking Number</label>
+            <label htmlFor="trackingNumber">
+              Tracking Number
+            </label>
             <input
               id="trackingNumber"
               value={trackingNumber}
@@ -374,7 +481,9 @@ function Shipments() {
               placeholder="TRF-XXXXXXXXXXXX"
             />
 
-            <button type="submit">Track Shipment</button>
+            <button type="submit">
+              Track Shipment
+            </button>
           </form>
 
           {trackedShipment && (
@@ -389,8 +498,24 @@ function Shipments() {
                 {trackedShipment.recipientName}
               </p>
               <p>
+                <strong>Phone:</strong>{' '}
+                {trackedShipment.recipientPhone || 'Not recorded'}
+              </p>
+              <p>
                 <strong>Destination:</strong>{' '}
                 {trackedShipment.destinationCity}
+              </p>
+              <p>
+                <strong>Delivery Address:</strong>{' '}
+                {trackedShipment.deliveryAddress}
+              </p>
+              <p>
+                <strong>Postal Code:</strong>{' '}
+                {trackedShipment.postalCode || 'Not recorded'}
+              </p>
+              <p>
+                <strong>Package Type:</strong>{' '}
+                {formatPackage(trackedShipment.packageType)}
               </p>
               <p>
                 <strong>Status:</strong>{' '}
@@ -416,6 +541,7 @@ function Shipments() {
                   <th>Tracking Number</th>
                   <th>Recipient</th>
                   <th>Destination</th>
+                  <th>Package Type</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -427,6 +553,7 @@ function Shipments() {
                     <td>{shipment.trackingNumber}</td>
                     <td>{shipment.recipientName}</td>
                     <td>{shipment.destinationCity}</td>
+                    <td>{formatPackage(shipment.packageType)}</td>
                     <td>
                       <span
                         className={`shipment-status status-${shipment.status.toLowerCase()}`}
@@ -447,7 +574,9 @@ function Shipments() {
                             : 'Cancel'}
                         </button>
                       ) : (
-                        <span className="shipment-no-action">—</span>
+                        <span className="shipment-no-action">
+                          —
+                        </span>
                       )}
                     </td>
                   </tr>

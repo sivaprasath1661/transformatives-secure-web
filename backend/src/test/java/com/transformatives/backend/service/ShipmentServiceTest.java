@@ -38,7 +38,10 @@ class ShipmentServiceTest {
         var request = new ShipmentRequest(
                 "John",
                 "Galway",
-                "12 Main Street, Galway"
+                "12 Main Street, Galway",
+                "+353 871234567",
+                "H91 ABC1",
+                "STANDARD_PARCEL"
         );
 
         var result = service.create(request, "testcustomer01");
@@ -53,7 +56,12 @@ class ShipmentServiceTest {
                 captor.getValue().getOwnerUsername()
         );
 
+        assertEquals("John", result.recipientName());
+        assertEquals("+353 871234567", result.recipientPhone());
+        assertEquals("H91 ABC1", result.postalCode());
+        assertEquals("STANDARD_PARCEL", result.packageType());
         assertEquals("PENDING", result.status());
+
         assertTrue(result.trackingNumber().startsWith("TRF-"));
     }
 
