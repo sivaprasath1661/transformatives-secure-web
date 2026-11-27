@@ -23,7 +23,9 @@ function Home() {
         );
 
         if (sessionResponse.status === 401) {
-          setRole('GUEST');
+          if (!controller.signal.aborted) {
+            setRole('GUEST');
+          }
           return;
         }
 
@@ -31,26 +33,45 @@ function Home() {
           throw new Error('Session verification failed');
         }
 
-        const adminResponse = await fetch(
-          `${API}/api/admin/access`,
-          {
+        const [adminResponse, courierResponse] = await Promise.all([
+          fetch(`${API}/api/admin/access`, {
             credentials: 'include',
             signal: controller.signal,
-          }
-        );
+          }),
+          fetch(`${API}/api/courier/access`, {
+            credentials: 'include',
+            signal: controller.signal,
+          }),
+        ]);
 
-        if (adminResponse.ok) {
-          setRole('ADMIN');
-        } else if (adminResponse.status === 403) {
-          setRole('CUSTOMER');
-        } else if (adminResponse.status === 401) {
-          setRole('GUEST');
-        } else {
+        if (
+          adminResponse.status === 401 ||
+          courierResponse.status === 401
+        ) {
+          if (!controller.signal.aborted) {
+            setRole('GUEST');
+          }
+          return;
+        }
+
+        if (
+          !(adminResponse.ok || adminResponse.status === 403) ||
+          !(courierResponse.ok || courierResponse.status === 403)
+        ) {
           throw new Error('Role verification failed');
         }
+
+        if (!controller.signal.aborted) {
+          if (adminResponse.ok) {
+            setRole('ADMIN');
+          } else if (courierResponse.ok) {
+            setRole('COURIER');
+          } else {
+            setRole('CUSTOMER');
+          }
+        }
       } catch (error) {
-        if (error.name !== 'AbortError') {
-          // Do not assume a role when verification fails.
+        if (error.name !== 'AbortError' && !controller.signal.aborted) {
           setRole('UNKNOWN');
         }
       } finally {
@@ -66,37 +87,62 @@ function Home() {
   }, []);
 
   const isAdmin = role === 'ADMIN';
+  const isCourier = role === 'COURIER';
   const isCustomer = role === 'CUSTOMER';
 
   const features = isAdmin
     ? [
         {
           title: 'Manage shipments',
-          description: 'View customer bookings in one dashboard.',
+          description:
+            'View customer bookings in one dashboard.',
         },
         {
-          title: 'Update delivery status',
-          description: 'Manage shipments through their delivery stages.',
+          title: 'Assign delivery partners',
+          description:
+            'Allocate pending shipments to authorised couriers.',
         },
         {
           title: 'Review audit history',
-          description: 'Review recorded administrator status changes.',
+          description:
+            'Track recorded courier assignments and delivery updates.',
         },
       ]
-    : [
-        {
-          title: 'Book shipments',
-          description: 'Create a delivery request in minutes.',
-        },
-        {
-          title: 'Track progress',
-          description: 'Find shipments using a tracking number.',
-        },
-        {
-          title: 'Manage bookings',
-          description: 'Review history and cancel pending shipments.',
-        },
-      ];
+    : isCourier
+      ? [
+          {
+            title: 'Assigned deliveries',
+            description:
+              'View shipments allocated to your courier account.',
+          },
+          {
+            title: 'Start delivery',
+            description:
+              'Update pending shipments when delivery begins.',
+          },
+          {
+            title: 'Confirm completion',
+            description:
+              'Mark delivered orders and maintain accurate tracking records.',
+          },
+        ]
+      : [
+          {
+            title: 'Book shipments',
+            description:
+              'Create a delivery request in minutes.',
+          },
+          {
+            title: 'Track progress',
+            description:
+              'Find shipments using a tracking number.',
+          },
+          {
+            title: 'Manage bookings',
+            description:
+              'Review history and cancel pending shipments.',
+          },
+        ];
 
   return (
     <main className="home-page">
@@ -105,7 +151,9 @@ function Home() {
           <span className="home-eyebrow">
             {isAdmin
               ? 'LOGISTICS ADMINISTRATION'
-              : 'SECURE LOGISTICS PLATFORM'}
+              : isCourier
+                ? 'DELIVERY PARTNER PORTAL'
+                : 'SECURE LOGISTICS PLATFORM'}
           </span>
 
           <h1>
@@ -113,6 +161,11 @@ function Home() {
               <>
                 Logistics operations,
                 <span> simplified.</span>
+              </>
+            ) : isCourier ? (
+              <>
+                Delivery management,
+                <span> made simple.</span>
               </>
             ) : (
               <>
@@ -124,8 +177,10 @@ function Home() {
 
           <p>
             {isAdmin
-              ? 'Monitor customer shipments, manage delivery progress and review operational records securely from one central dashboard.'
-              : 'TRANSFORMATIVES helps customers book, manage and track deliveries through a secure and reliable platform.'}
+              ? 'Monitor customer shipments, assign delivery partners and review operational records securely from one central dashboard.'
+              : isCourier
+                ? 'Access your assigned shipments, manage active deliveries and record completed orders securely through TRANSFORMATIVES.'
+                : 'TRANSFORMATIVES helps customers book, manage and track deliveries through a secure and reliable platform.'}
           </p>
 
           <div className="home-actions">
@@ -138,6 +193,22 @@ function Home() {
               >
                 Open Admin Dashboard
               </Link>
+            ) : isCourier ? (
+              <>
+                <Link
+                  to="/courier/shipments"
+                  className="home-primary"
+                >
+                  Open Courier Dashboard
+                </Link>
+
+                <Link
+                  to="/welcome"
+                  className="home-secondary"
+                >
+                  My Dashboard
+                </Link>
+              </>
             ) : isCustomer ? (
               <>
                 <Link
@@ -192,13 +263,17 @@ function Home() {
               <h2>
                 {isAdmin
                   ? 'Operations at a glance.'
-                  : 'One platform. Full visibility.'}
+                  : isCourier
+                    ? 'Your deliveries at a glance.'
+                    : 'One platform. Full visibility.'}
               </h2>
 
               <p>
                 {isAdmin
                   ? 'Manage logistics securely.'
-                  : 'Your deliveries, securely managed.'}
+                  : isCourier
+                    ? 'Assigned shipments, securely managed.'
+                    : 'Your deliveries, securely managed.'}
               </p>
             </div>
           </div>
@@ -234,13 +309,17 @@ function Home() {
           <h2>
             {isAdmin
               ? 'Operational visibility'
-              : 'Simple tracking'}
+              : isCourier
+                ? 'Assigned shipment visibility'
+                : 'Simple tracking'}
           </h2>
 
           <p>
             {isAdmin
               ? 'Monitor shipment statuses and manage delivery progress.'
-              : 'Track your deliveries and check their latest recorded status.'}
+              : isCourier
+                ? 'View deliveries assigned specifically to your courier account.'
+                : 'Track your deliveries and check their latest recorded status.'}
           </p>
         </div>
 
@@ -248,13 +327,17 @@ function Home() {
           <h2>
             {isAdmin
               ? 'Accountability'
-              : 'Easy management'}
+              : isCourier
+                ? 'Delivery updates'
+                : 'Easy management'}
           </h2>
 
           <p>
             {isAdmin
-              ? 'Review recorded administrative status changes and their history.'
-              : 'Manage shipment requests and review your booking history.'}
+              ? 'Review recorded shipment assignments and status changes.'
+              : isCourier
+                ? 'Start deliveries and confirm completed orders with recorded status updates.'
+                : 'Manage shipment requests and review your booking history.'}
           </p>
         </div>
       </section>

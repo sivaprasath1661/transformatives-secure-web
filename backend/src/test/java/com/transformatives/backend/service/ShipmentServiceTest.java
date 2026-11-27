@@ -18,16 +18,25 @@ import org.springframework.web.server.ResponseStatusException;
 import com.transformatives.backend.dto.ShipmentRequest;
 import com.transformatives.backend.entity.Shipment;
 import com.transformatives.backend.repository.ShipmentRepository;
+import com.transformatives.backend.repository.ShipmentStatusHistoryRepository;
 
 class ShipmentServiceTest {
 
     private ShipmentRepository repository;
+    private ShipmentStatusHistoryRepository historyRepository;
     private ShipmentService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(ShipmentRepository.class);
-        service = new ShipmentService(repository);
+        historyRepository = mock(
+                ShipmentStatusHistoryRepository.class
+        );
+
+        service = new ShipmentService(
+                repository,
+                historyRepository
+        );
     }
 
     @Test
@@ -44,7 +53,10 @@ class ShipmentServiceTest {
                 "STANDARD_PARCEL"
         );
 
-        var result = service.create(request, "testcustomer01");
+        var result = service.create(
+                request,
+                "testcustomer01"
+        );
 
         var captor = org.mockito.ArgumentCaptor
                 .forClass(Shipment.class);
@@ -62,7 +74,9 @@ class ShipmentServiceTest {
         assertEquals("STANDARD_PARCEL", result.packageType());
         assertEquals("PENDING", result.status());
 
-        assertTrue(result.trackingNumber().startsWith("TRF-"));
+        assertTrue(
+                result.trackingNumber().startsWith("TRF-")
+        );
     }
 
     @Test

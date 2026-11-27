@@ -12,10 +12,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.transformatives.backend.dto.CourierAssignmentRequest;
 import com.transformatives.backend.dto.ShipmentResponse;
 import com.transformatives.backend.dto.ShipmentStatusHistoryResponse;
 import com.transformatives.backend.dto.ShipmentStatusUpdateRequest;
+import com.transformatives.backend.entity.ShipmentAssignmentHistory;
 import com.transformatives.backend.service.AdminShipmentService;
+import com.transformatives.backend.service.CourierAssignmentService;
 
 import jakarta.validation.Valid;
 
@@ -24,11 +27,14 @@ import jakarta.validation.Valid;
 public class AdminShipmentController {
 
     private final AdminShipmentService adminShipmentService;
+    private final CourierAssignmentService assignmentService;
 
     public AdminShipmentController(
-            AdminShipmentService adminShipmentService) {
+            AdminShipmentService adminShipmentService,
+            CourierAssignmentService assignmentService) {
 
         this.adminShipmentService = adminShipmentService;
+        this.assignmentService = assignmentService;
     }
 
     @GetMapping("/access")
@@ -54,10 +60,30 @@ public class AdminShipmentController {
         );
     }
 
+    @PatchMapping("/shipments/{trackingNumber}/assign")
+    public ShipmentResponse assign(
+            @PathVariable String trackingNumber,
+            @Valid @RequestBody CourierAssignmentRequest request,
+            Authentication authentication) {
+
+        return assignmentService.assign(
+                trackingNumber,
+                request.courierUsername(),
+                authentication.getName()
+        );
+    }
+
     @GetMapping("/shipments/{trackingNumber}/history")
     public List<ShipmentStatusHistoryResponse> history(
             @PathVariable String trackingNumber) {
 
         return adminShipmentService.getHistory(trackingNumber);
+    }
+
+    @GetMapping("/shipments/{trackingNumber}/assignments")
+    public List<ShipmentAssignmentHistory> assignments(
+            @PathVariable String trackingNumber) {
+
+        return assignmentService.history(trackingNumber);
     }
 }

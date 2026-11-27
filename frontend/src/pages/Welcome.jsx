@@ -5,11 +5,16 @@ import './Welcome.css';
 
 const API = 'http://localhost:8181';
 
+const courierNames = {
+  jetdeliveries: 'Jet Deliveries',
+  jkcouriers: 'JK Couriers',
+};
+
 function Welcome() {
   const navigate = useNavigate();
 
   const [username, setUsername] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState('');
@@ -35,27 +40,46 @@ function Welcome() {
 
         const data = await response.json();
 
-        // This endpoint is accessible only to ADMIN users.
-        const adminResponse = await fetch(`${API}/api/admin/access`, {
-          credentials: 'include',
-          signal: controller.signal,
-        });
+        // Determine the authenticated user's role.
+        const [adminResponse, courierResponse] = await Promise.all([
+          fetch(`${API}/api/admin/access`, {
+            credentials: 'include',
+            signal: controller.signal,
+          }),
+          fetch(`${API}/api/courier/access`, {
+            credentials: 'include',
+            signal: controller.signal,
+          }),
+        ]);
 
-        if (adminResponse.status === 401) {
+        if (
+          adminResponse.status === 401 ||
+          courierResponse.status === 401
+        ) {
           navigate('/login', { replace: true });
           return;
         }
 
-        if (
-          !adminResponse.ok &&
-          adminResponse.status !== 403
-        ) {
+        const validAdminResponse =
+          adminResponse.ok || adminResponse.status === 403;
+
+        const validCourierResponse =
+          courierResponse.ok || courierResponse.status === 403;
+
+        if (!validAdminResponse || !validCourierResponse) {
           throw new Error('Unable to verify user role');
         }
 
         if (!controller.signal.aborted) {
           setUsername(data.username);
-          setIsAdmin(adminResponse.ok);
+
+          if (adminResponse.ok) {
+            setRole('ADMIN');
+          } else if (courierResponse.ok) {
+            setRole('COURIER');
+          } else {
+            setRole('CUSTOMER');
+          }
         }
       } catch (err) {
         if (err.name !== 'AbortError' && !controller.signal.aborted) {
@@ -102,6 +126,8 @@ function Welcome() {
         throw new Error('Logout failed');
       }
 
+      setUsername('');
+      setRole('');
       navigate('/login', { replace: true });
     } catch {
       setError('Logout failed. Please try again.');
@@ -118,7 +144,7 @@ function Welcome() {
     );
   }
 
-  if (!username) {
+  if (!username || !role) {
     return (
       <main className="welcome-page">
         <p>{error || 'Redirecting to login...'}</p>
@@ -126,15 +152,19 @@ function Welcome() {
     );
   }
 
+  const isAdmin = role === 'ADMIN';
+  const isCourier = role === 'COURIER';
+  const companyName = courierNames[username] || username;
+
   return (
     <main className="welcome-page">
       <section
         className={`welcome-card ${
-          isAdmin ? 'welcome-admin-card' : ''
+          isAdmin || isCourier ? 'welcome-admin-card' : ''
         }`}
       >
         <div className="welcome-icon">
-          {isAdmin ? '◆' : '✓'}
+          {isAdmin ? '◆' : isCourier ? '↗' : '✓'}
         </div>
 
         {isAdmin ? (
@@ -150,9 +180,10 @@ function Welcome() {
             </p>
 
             <p className="welcome-description">
-              Manage customer shipments, monitor delivery
-              progress and review operational audit history
-              from your secure administration dashboard.
+              Manage customer shipments, assign delivery
+              partners, monitor delivery progress and review
+              operational audit history from your secure
+              administration dashboard.
             </p>
 
             <div className="welcome-admin-features">
@@ -163,7 +194,7 @@ function Welcome() {
 
               <div>
                 <span>02</span>
-                <strong>Update Delivery Status</strong>
+                <strong>Assign Couriers</strong>
               </div>
 
               <div>
@@ -177,6 +208,48 @@ function Welcome() {
               className="welcome-home welcome-admin-primary"
             >
               Open Admin Dashboard
+            </Link>
+          </>
+        ) : isCourier ? (
+          <>
+            <span className="welcome-role-label">
+              DELIVERY PARTNER ACCESS
+            </span>
+
+            <h1>Welcome, {companyName}</h1>
+
+            <p>
+              Successfully logged in as <strong>{username}</strong>.
+            </p>
+
+            <p className="welcome-description">
+              View shipments assigned to your delivery team,
+              start deliveries and update shipment statuses
+              as orders are completed.
+            </p>
+
+            <div className="welcome-admin-features">
+              <div>
+                <span>01</span>
+                <strong>View Assigned Orders</strong>
+              </div>
+
+              <div>
+                <span>02</span>
+                <strong>Start Deliveries</strong>
+              </div>
+
+              <div>
+                <span>03</span>
+                <strong>Confirm Delivery</strong>
+              </div>
+            </div>
+
+            <Link
+              to="/courier/shipments"
+              className="welcome-home welcome-admin-primary"
+            >
+              Open Courier Dashboard
             </Link>
           </>
         ) : (

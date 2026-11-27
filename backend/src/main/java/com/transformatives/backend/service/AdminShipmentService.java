@@ -31,6 +31,7 @@ public class AdminShipmentService {
 
     @Transactional(readOnly = true)
     public List<ShipmentResponse> findAllShipments() {
+
         return shipmentRepository.findAllByOrderByIdDesc()
                 .stream()
                 .map(this::toResponse)
@@ -79,20 +80,23 @@ public class AdminShipmentService {
             );
         }
 
-        ShipmentStatusHistory history = new ShipmentStatusHistory(
+        if (changed != 1) {
+            throw new IllegalStateException(
+                    "Unexpected status update count"
+            );
+        }
+
+        historyRepository.save(new ShipmentStatusHistory(
                 trackingNumber,
                 expectedStatus,
                 requestedStatus,
                 adminUsername
-        );
-
-        historyRepository.save(history);
+        ));
 
         Shipment updated = shipmentRepository
                 .findByTrackingNumber(trackingNumber)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Shipment not found"
+                .orElseThrow(() -> new IllegalStateException(
+                        "Updated shipment disappeared"
                 ));
 
         return toResponse(updated);
@@ -138,7 +142,8 @@ public class AdminShipmentService {
                 shipment.getStatus(),
                 shipment.getRecipientPhone(),
                 shipment.getPostalCode(),
-                shipment.getPackageType()
+                shipment.getPackageType(),
+                shipment.getAssignedCourier()
         );
     }
 }

@@ -12,15 +12,22 @@ import org.springframework.web.server.ResponseStatusException;
 import com.transformatives.backend.dto.ShipmentRequest;
 import com.transformatives.backend.dto.ShipmentResponse;
 import com.transformatives.backend.entity.Shipment;
+import com.transformatives.backend.entity.ShipmentStatusHistory;
 import com.transformatives.backend.repository.ShipmentRepository;
+import com.transformatives.backend.repository.ShipmentStatusHistoryRepository;
 
 @Service
 public class ShipmentService {
 
     private final ShipmentRepository shipmentRepository;
+    private final ShipmentStatusHistoryRepository historyRepository;
 
-    public ShipmentService(ShipmentRepository shipmentRepository) {
+    public ShipmentService(
+            ShipmentRepository shipmentRepository,
+            ShipmentStatusHistoryRepository historyRepository) {
+
         this.shipmentRepository = shipmentRepository;
+        this.historyRepository = historyRepository;
     }
 
     @Transactional
@@ -74,21 +81,55 @@ public class ShipmentService {
             String trackingNumber,
             String username) {
 
-        Shipment shipment = findOwnedShipment(
+        // One atomic UPDATE checks ownership and current status.
+        int updatedRows = shipmentRepository.cancelPendingForOwner(
                 trackingNumber,
                 username
         );
 
-        try {
-            shipment.cancel();
-        } catch (IllegalStateException exception) {
+        if (updatedRows == 0) {
+
+            // Owner-scoped lookup avoids disclosing other shipments.
+            shipmentRepository
+                    .findByTrackingNumberAndOwnerUsername(
+                            trackingNumber,
+                            username
+                    )
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Shipment not found"
+                    ));
+
+            // Shipment exists but is no longer cancellable.
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Only pending shipments can be cancelled"
             );
         }
 
-        return toResponse(shipment);
+        if (updatedRows != 1) {
+            throw new IllegalStateException(
+                    "Unexpected cancellation update count"
+            );
+        }
+
+        // Record the cancellation in the existing audit table.
+        ShipmentStatusHistory history = new ShipmentStatusHistory(
+                trackingNumber,
+                "PENDING",
+                "CANCELLED",
+                username
+        );
+
+        historyRepository.save(history);
+
+        // Fetch the updated record for an accurate API response.
+        Shipment updatedShipment = findOwnedShipment(
+                trackingNumber,
+                username
+        );
+
+        return toResponse(updatedShipment);
     }
 
     private Shipment findOwnedShipment(

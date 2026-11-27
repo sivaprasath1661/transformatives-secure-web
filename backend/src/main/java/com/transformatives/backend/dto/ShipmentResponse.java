@@ -10,16 +10,22 @@ public record ShipmentResponse(
         String status,
         String recipientPhone,
         String postalCode,
-        String packageType
+        String packageType,
+        String assignedCourier
 ) {
-    // Compatibility with existing six-field test fixtures.
+
+    // Compatible with existing nine-field calls.
     public ShipmentResponse(
             Long id,
             String trackingNumber,
             String recipientName,
             String destinationCity,
             String deliveryAddress,
-            String status) {
+            String status,
+            String recipientPhone,
+            String postalCode,
+            String packageType) {
+
         this(
                 id,
                 trackingNumber,
@@ -27,6 +33,30 @@ public record ShipmentResponse(
                 destinationCity,
                 deliveryAddress,
                 status,
+                recipientPhone,
+                postalCode,
+                packageType,
+                null
+        );
+    }
+
+    // Compatible with older tests and callers.
+    public ShipmentResponse(
+            Long id,
+            String trackingNumber,
+            String recipientName,
+            String destinationCity,
+            String deliveryAddress,
+            String status) {
+
+        this(
+                id,
+                trackingNumber,
+                recipientName,
+                destinationCity,
+                deliveryAddress,
+                status,
+                null,
                 null,
                 null,
                 null

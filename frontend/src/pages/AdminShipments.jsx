@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './AdminShipments.css';
+import './CourierAdmin.css';
 
 const API = 'http://localhost:8181';
 
@@ -12,6 +13,11 @@ const labels = {
   CANCELLED: 'Cancelled',
 };
 
+const courierNames = {
+  jetdeliveries: 'Jet Deliveries',
+  jkcouriers: 'JK Couriers',
+};
+
 function AdminShipments() {
   const navigate = useNavigate();
 
@@ -20,8 +26,10 @@ function AdminShipments() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updating, setUpdating] = useState('');
+  const [choices, setChoices] = useState({});
   const [selectedTracking, setSelectedTracking] = useState('');
   const [history, setHistory] = useState([]);
+  const [assignments, setAssignments] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [denied, setDenied] = useState(false);
   const [error, setError] = useState('');
@@ -61,7 +69,7 @@ function AdminShipments() {
           setShipments(data);
         }
       } catch (err) {
-        if (err.name !== 'AbortError' && !controller.signal.aborted) {
+        if (!controller.signal.aborted && err.name !== 'AbortError') {
           setError('Unable to load shipment records.');
         }
       } finally {
@@ -72,13 +80,11 @@ function AdminShipments() {
     }
 
     load();
-
     return () => controller.abort();
   }, [loadShipments]);
 
   const refreshShipments = async () => {
     setRefreshing(true);
-    setError('');
 
     try {
       const data = await loadShipments();
@@ -112,46 +118,59 @@ function AdminShipments() {
     setSelectedTracking(trackingNumber);
     setHistoryLoading(true);
     setHistory([]);
+    setAssignments([]);
     setError('');
 
-    try {
-      const response = await fetch(
-        `${API}/api/admin/shipments/${encodeURIComponent(
-          trackingNumber
-        )}/history`,
-        { credentials: 'include' }
-      );
+    const url = `${API}/api/admin/shipments/${encodeURIComponent(
+      trackingNumber
+    )}`;
 
-      if (response.status === 401) {
+    try {
+      const [statusResponse, assignmentResponse] = await Promise.all([
+        fetch(`${url}/history`, { credentials: 'include' }),
+        fetch(`${url}/assignments`, { credentials: 'include' }),
+      ]);
+
+      if (
+        statusResponse.status === 401 ||
+        assignmentResponse.status === 401
+      ) {
         navigate('/login', { replace: true });
         return;
       }
 
-      if (response.status === 403) {
+      if (
+        statusResponse.status === 403 ||
+        assignmentResponse.status === 403
+      ) {
         setDenied(true);
         return;
       }
 
-      if (!response.ok) {
+      if (!statusResponse.ok || !assignmentResponse.ok) {
         throw new Error('History request failed');
       }
 
-      setHistory(await response.json());
+      setHistory(await statusResponse.json());
+      setAssignments(await assignmentResponse.json());
     } catch {
-      setError('Unable to load status history.');
+      setError('Unable to load shipment history.');
     } finally {
       setHistoryLoading(false);
     }
   };
 
-  const updateShipment = async (shipment, status) => {
+  const submitChange = async (
+    shipment,
+    suffix,
+    payload,
+    successMessage
+  ) => {
     if (updating) return;
 
-    const confirmed = window.confirm(
-      `Change ${shipment.trackingNumber} to ${labels[status]}?`
-    );
-
-    if (!confirmed) return;
+    if (!window.confirm(`${successMessage}?`)) {
+      return;
+    }
 
     setUpdating(shipment.trackingNumber);
     setError('');
@@ -163,7 +182,7 @@ function AdminShipments() {
       const response = await fetch(
         `${API}/api/admin/shipments/${encodeURIComponent(
           shipment.trackingNumber
-        )}/status`,
+        )}/${suffix}`,
         {
           method: 'PATCH',
           credentials: 'include',
@@ -171,7 +190,7 @@ function AdminShipments() {
             'Content-Type': 'application/json',
             [csrf.headerName]: csrf.token,
           },
-          body: JSON.stringify({ status }),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -181,18 +200,20 @@ function AdminShipments() {
       }
 
       if (response.status === 403) {
-        setError('Administrator access is required.');
+        setError('Administrator access or CSRF token rejected.');
         return;
       }
 
       if (response.status === 409) {
-        setError('Shipment status has changed. Please refresh.');
+        setError(
+          'Shipment has already changed. Refresh and retry if appropriate.'
+        );
         await refreshShipments();
         return;
       }
 
       if (!response.ok) {
-        throw new Error('Status update failed');
+        throw new Error('Update failed');
       }
 
       const updated = await response.json();
@@ -211,28 +232,27 @@ function AdminShipments() {
         await loadHistory(shipment.trackingNumber);
       }
 
-      setMessage(
-        `Shipment ${shipment.trackingNumber} marked ${labels[status]}.`
-      );
+      setMessage(`${successMessage} — completed.`);
     } catch {
-      setError('Unable to update shipment status.');
+      setError('Unable to complete operation.');
     } finally {
       setUpdating('');
     }
   };
 
-  const filteredShipments = shipments.filter((shipment) => {
-    const query = search.trim().toLowerCase();
-
-    return [
+  const filteredShipments = shipments.filter((shipment) =>
+    [
       shipment.trackingNumber,
       shipment.recipientName,
       shipment.destinationCity,
       shipment.status,
+      shipment.assignedCourier,
     ].some((value) =>
-      String(value ?? '').toLowerCase().includes(query)
-    );
-  });
+      String(value ?? '')
+        .toLowerCase()
+        .includes(search.trim().toLowerCase())
+    )
+  );
 
   const count = (status) =>
     shipments.filter((item) => item.status === status).length;
@@ -249,7 +269,7 @@ function AdminShipments() {
     return (
       <main className="admin-page">
         <h1>Access Denied</h1>
-        <p>This page is restricted to administrators.</p>
+        <p>Administrator access required.</p>
       </main>
     );
   }
@@ -260,21 +280,18 @@ function AdminShipments() {
         <div>
           <span className="admin-eyebrow">OPERATIONS</span>
           <h1>Admin Logistics Dashboard</h1>
-          <p>Manage shipments and monitor delivery progress.</p>
+          <p>
+            Assign couriers, monitor shipments and review delivery history.
+          </p>
         </div>
 
         <button
           className="admin-refresh"
           type="button"
-          onClick={() => {
-            if (!refreshing) {
-              refreshShipments();
-            }
-          }}
+          onClick={refreshShipments}
           disabled={refreshing}
-          aria-busy={refreshing}
         >
-          {refreshing ? '↻ Refreshing...' : '↻ Refresh'}
+          {refreshing ? 'Refreshing...' : '↻ Refresh'}
         </button>
       </header>
 
@@ -291,9 +308,9 @@ function AdminShipments() {
       )}
 
       <section
-        className={`admin-stats ${refreshing ? 'admin-refreshing' : ''}`}
-        aria-label="Shipment statistics"
-        aria-busy={refreshing}
+        className={`admin-stats ${
+          refreshing ? 'admin-refreshing' : ''
+        }`}
       >
         {stats.map((stat) => (
           <div className="admin-stat" key={stat.label}>
@@ -304,14 +321,16 @@ function AdminShipments() {
       </section>
 
       <section
-        className={`admin-panel ${refreshing ? 'admin-refreshing' : ''}`}
+        className={`admin-panel ${
+          refreshing ? 'admin-refreshing' : ''
+        }`}
       >
         <div className="admin-table-heading">
           <h2>All Customer Shipments</h2>
 
           <input
             aria-label="Search shipments"
-            placeholder="Search tracking, recipient, city or status"
+            placeholder="Search tracking, recipient, city, courier or status"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -331,6 +350,7 @@ function AdminShipments() {
                   <th>Destination</th>
                   <th>Package</th>
                   <th>Status</th>
+                  <th>Courier</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -344,15 +364,21 @@ function AdminShipments() {
                         ? 'DELIVERED'
                         : null;
 
+                  const canAssign =
+                    shipment.status === 'PENDING' &&
+                    !shipment.assignedCourier;
+
                   return (
                     <tr key={shipment.trackingNumber}>
                       <td>{shipment.trackingNumber}</td>
                       <td>{shipment.recipientName}</td>
                       <td>{shipment.destinationCity}</td>
+
                       <td>
                         {shipment.packageType?.replaceAll('_', ' ') ||
                           'Not recorded'}
                       </td>
+
                       <td>
                         <span
                           className={`admin-status status-${shipment.status.toLowerCase()}`}
@@ -360,14 +386,87 @@ function AdminShipments() {
                           {labels[shipment.status] || shipment.status}
                         </span>
                       </td>
+
+                      <td>
+                        {shipment.assignedCourier ? (
+                          courierNames[shipment.assignedCourier] ||
+                          shipment.assignedCourier
+                        ) : canAssign ? (
+                          <div className="courier-assignment">
+                            <select
+                              aria-label={`Assign courier for ${shipment.trackingNumber}`}
+                              value={
+                                choices[shipment.trackingNumber] || ''
+                              }
+                              onChange={(event) =>
+                                setChoices((previous) => ({
+                                  ...previous,
+                                  [shipment.trackingNumber]:
+                                    event.target.value,
+                                }))
+                              }
+                            >
+                              <option value="">
+                                Select courier
+                              </option>
+                              <option value="jetdeliveries">
+                                Jet Deliveries
+                              </option>
+                              <option value="jkcouriers">
+                                JK Couriers
+                              </option>
+                            </select>
+
+                            <button
+                              type="button"
+                              disabled={
+                                Boolean(updating) ||
+                                refreshing ||
+                                !choices[shipment.trackingNumber]
+                              }
+                              onClick={() =>
+                                submitChange(
+                                  shipment,
+                                  'assign',
+                                  {
+                                    courierUsername:
+                                      choices[shipment.trackingNumber],
+                                  },
+                                  `Assign ${shipment.trackingNumber} to ${
+                                    courierNames[
+                                      choices[shipment.trackingNumber]
+                                    ]
+                                  }`
+                                )
+                              }
+                            >
+                              {updating === shipment.trackingNumber
+                                ? 'Assigning...'
+                                : 'Assign'}
+                            </button>
+                          </div>
+                        ) : (
+                          'Unassigned'
+                        )}
+                      </td>
+
                       <td>
                         <div className="admin-actions">
                           {nextStatus && (
                             <button
                               type="button"
-                              disabled={Boolean(updating) || refreshing}
+                              disabled={
+                                Boolean(updating) || refreshing
+                              }
                               onClick={() =>
-                                updateShipment(shipment, nextStatus)
+                                submitChange(
+                                  shipment,
+                                  'status',
+                                  { status: nextStatus },
+                                  `Mark ${shipment.trackingNumber} ${
+                                    labels[nextStatus]
+                                  }`
+                                )
                               }
                             >
                               {updating === shipment.trackingNumber
@@ -377,8 +476,8 @@ function AdminShipments() {
                           )}
 
                           <button
-                            type="button"
                             className="admin-history-button"
+                            type="button"
                             disabled={refreshing}
                             onClick={() =>
                               loadHistory(shipment.trackingNumber)
@@ -401,7 +500,7 @@ function AdminShipments() {
         <section className="admin-panel admin-history">
           <div className="admin-table-heading">
             <div>
-              <h2>Status History</h2>
+              <h2>Shipment History</h2>
               <p>{selectedTracking}</p>
             </div>
 
@@ -416,34 +515,79 @@ function AdminShipments() {
 
           {historyLoading ? (
             <p>Loading history...</p>
-          ) : history.length === 0 ? (
-            <p>No administrator status changes recorded yet.</p>
           ) : (
-            <div className="admin-table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Previous</th>
-                    <th>New Status</th>
-                    <th>Changed By</th>
-                    <th>Time (UTC)</th>
-                  </tr>
-                </thead>
+            <>
+              <h3>Status changes</h3>
 
-                <tbody>
-                  {history.map((event) => (
-                    <tr key={event.id}>
-                      <td>{labels[event.oldStatus]}</td>
-                      <td>{labels[event.newStatus]}</td>
-                      <td>{event.changedBy}</td>
-                      <td>
-                        {event.changedAt.replace('T', ' ')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+              {history.length === 0 ? (
+                <p>No status changes recorded.</p>
+              ) : (
+                <div className="admin-table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Previous</th>
+                        <th>New Status</th>
+                        <th>Changed By</th>
+                        <th>Time (UTC)</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {history.map((event) => (
+                        <tr key={event.id}>
+                          <td>
+                            {labels[event.oldStatus] ||
+                              event.oldStatus}
+                          </td>
+                          <td>
+                            {labels[event.newStatus] ||
+                              event.newStatus}
+                          </td>
+                          <td>{event.changedBy}</td>
+                          <td>
+                            {event.changedAt?.replace('T', ' ')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <h3>Courier assignments</h3>
+
+              {assignments.length === 0 ? (
+                <p>No courier assigned yet.</p>
+              ) : (
+                <div className="admin-table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Courier</th>
+                        <th>Assigned By</th>
+                        <th>Time (UTC)</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {assignments.map((event) => (
+                        <tr key={event.id}>
+                          <td>
+                            {courierNames[event.courierUsername] ||
+                              event.courierUsername}
+                          </td>
+                          <td>{event.assignedBy}</td>
+                          <td>
+                            {event.assignedAt?.replace('T', ' ')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </section>
       )}

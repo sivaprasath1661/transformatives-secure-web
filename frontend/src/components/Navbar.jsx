@@ -10,7 +10,7 @@ function Navbar() {
   const location = useLocation();
 
   const [authenticated, setAuthenticated] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState('');
   const [checking, setChecking] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState('');
@@ -28,25 +28,40 @@ function Navbar() {
         });
 
         if (!response.ok) {
-          setAuthenticated(false);
-          setIsAdmin(false);
+          if (!controller.signal.aborted) {
+            setAuthenticated(false);
+            setRole('');
+          }
           return;
         }
 
+        const [adminResponse, courierResponse] = await Promise.all([
+          fetch(`${API}/api/admin/access`, {
+            credentials: 'include',
+            signal: controller.signal,
+          }),
+          fetch(`${API}/api/courier/access`, {
+            credentials: 'include',
+            signal: controller.signal,
+          }),
+        ]);
+
+        if (controller.signal.aborted) return;
+
         setAuthenticated(true);
 
-        const adminResponse = await fetch(`${API}/api/admin/access`, {
-          credentials: 'include',
-          signal: controller.signal,
-        });
-
-        if (!controller.signal.aborted) {
-          setIsAdmin(adminResponse.ok);
+        if (adminResponse.ok) {
+          setRole('ADMIN');
+        } else if (courierResponse.ok) {
+          setRole('COURIER');
+        } else {
+          setRole('CUSTOMER');
         }
       } catch (err) {
-        if (err.name !== 'AbortError') {
+        if (err.name !== 'AbortError' && !controller.signal.aborted) {
           setAuthenticated(false);
-          setIsAdmin(false);
+          setRole('');
+          setError('Unable to verify your session.');
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -90,7 +105,7 @@ function Navbar() {
       }
 
       setAuthenticated(false);
-      setIsAdmin(false);
+      setRole('');
       navigate('/login', { replace: true });
     } catch {
       setError('Logout failed. Please try again.');
@@ -106,7 +121,9 @@ function Navbar() {
     <>
       <nav className="navbar" aria-label="Main navigation">
         <NavLink to="/" className="navbar-brand">
-          <span className="brand-icon" aria-hidden="true">↗</span>
+          <span className="brand-icon" aria-hidden="true">
+            ↗
+          </span>
           TRANSFORMATIVES
         </NavLink>
 
@@ -118,20 +135,33 @@ function Navbar() {
           {!checking && (
             authenticated ? (
               <>
-                {isAdmin ? (
+                {role === 'ADMIN' ? (
                   <NavLink
                     to="/admin/shipments"
                     className={navClass}
                   >
                     Admin Dashboard
                   </NavLink>
+                ) : role === 'COURIER' ? (
+                  <NavLink
+                    to="/courier/shipments"
+                    className={navClass}
+                  >
+                    Courier Dashboard
+                  </NavLink>
                 ) : (
                   <>
-                    <NavLink to="/welcome" className={navClass}>
+                    <NavLink
+                      to="/welcome"
+                      className={navClass}
+                    >
                       Dashboard
                     </NavLink>
 
-                    <NavLink to="/shipments" className={navClass}>
+                    <NavLink
+                      to="/shipments"
+                      className={navClass}
+                    >
                       My Shipments
                     </NavLink>
                   </>
@@ -148,11 +178,17 @@ function Navbar() {
               </>
             ) : (
               <>
-                <NavLink to="/login" className={navClass}>
+                <NavLink
+                  to="/login"
+                  className={navClass}
+                >
                   Login
                 </NavLink>
 
-                <NavLink to="/register" className="nav-register">
+                <NavLink
+                  to="/register"
+                  className="nav-register"
+                >
                   Get Started
                 </NavLink>
               </>

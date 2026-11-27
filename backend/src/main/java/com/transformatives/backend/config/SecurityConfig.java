@@ -1,3 +1,4 @@
+
 package com.transformatives.backend.config;
 
 import java.util.List;
@@ -28,8 +29,8 @@ public class SecurityConfig {
                 })
                 .csrf(csrf -> {
                 })
-                .sessionManagement(session
-                        -> session.sessionCreationPolicy(
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
                                 SessionCreationPolicy.IF_REQUIRED
                         )
                 )
@@ -42,18 +43,27 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/login"
                         ).permitAll()
-                        // Restrict customer endpoints
+
+                        // Customer-only operations
                         .requestMatchers("/api/customer/**")
                         .hasRole("CUSTOMER")
-                        // Restrict administrator endpoints
+
+                        // Administrator-only operations
                         .requestMatchers("/api/admin/**")
                         .hasRole("ADMIN")
-                        // All remaining endpoints require authentication
+
+                        // Courier-only operations
+                        .requestMatchers("/api/courier/**")
+                        .hasRole("COURIER")
+
+                        // All remaining endpoints require login
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(
-                                new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)
+                                new HttpStatusEntryPoint(
+                                        HttpStatus.UNAUTHORIZED
+                                )
                         )
                 )
                 .logout(logout -> logout
@@ -77,6 +87,7 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowedOrigins(
@@ -84,17 +95,27 @@ public class SecurityConfig {
         );
 
         config.setAllowedMethods(
-                List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                List.of(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "PATCH",
+                        "DELETE",
+                        "OPTIONS"
+                )
         );
 
         config.setAllowedHeaders(
-                List.of("Content-Type", "X-CSRF-TOKEN")
+                List.of(
+                        "Content-Type",
+                        "X-CSRF-TOKEN"
+                )
         );
 
         config.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource source
-                = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
 
         source.registerCorsConfiguration("/api/**", config);
 

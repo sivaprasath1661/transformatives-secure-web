@@ -34,7 +34,6 @@ public class Shipment {
     @Column(nullable = false, length = 20)
     private String status;
 
-    // Nullable to preserve existing shipment records.
     @Column(name = "recipient_phone", length = 25)
     private String recipientPhone;
 
@@ -43,6 +42,9 @@ public class Shipment {
 
     @Column(name = "package_type", length = 30)
     private String packageType;
+
+    @Column(name = "assigned_courier", length = 100)
+    private String assignedCourier;
 
     protected Shipment() {
         // Required by JPA
@@ -69,7 +71,6 @@ public class Shipment {
         this.status = "PENDING";
     }
 
-    // Keep existing tests and callers compatible.
     public Shipment(
             String trackingNumber,
             String ownerUsername,
@@ -96,7 +97,7 @@ public class Shipment {
             );
         }
 
-        this.status = "CANCELLED";
+        status = "CANCELLED";
     }
 
     public Long getId() {
@@ -137,5 +138,9 @@ public class Shipment {
 
     public String getPackageType() {
         return packageType;
+    }
+
+    public String getAssignedCourier() {
+        return assignedCourier;
     }
 }
