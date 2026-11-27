@@ -8,7 +8,8 @@
 .register-form {
   width: 100%;
   max-width: 440px;
-  background: white;
+  box-sizing: border-box;
+  background: #ffffff;
   padding: 30px;
   border-radius: 8px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -18,21 +19,162 @@
 .register-form h1 {
   text-align: center;
   margin-bottom: 24px;
+  color: #193b56;
 }
 
 .register-form label {
   display: block;
   margin: 14px 0 6px;
   font-weight: 600;
+  color: #193b56;
 }
 
 .register-form input {
   width: 100%;
+  box-sizing: border-box;
   padding: 11px;
   border: 1px solid #aaa;
   border-radius: 4px;
   font-size: 15px;
+  font-family: inherit;
 }
+
+.register-form input:focus-visible {
+  outline: 2px solid #74c9bd;
+  outline-offset: 2px;
+  border-color: #258a80;
+}
+
+/* Password show/hide button */
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-wrapper input {
+  padding-right: 68px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 7px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  padding: 7px 8px;
+  color: #258a80;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.password-toggle:hover {
+  background: #e7f5f2;
+}
+
+.password-toggle:focus-visible {
+  outline: 2px solid #258a80;
+}
+
+/* Live password strength */
+
+.password-strength {
+  margin-top: 12px;
+  padding: 15px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.password-strength-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #193b56;
+}
+
+.password-strength-heading strong {
+  font-size: 13px;
+}
+
+.password-strength-heading > span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.password-strength-bars {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 14px;
+}
+
+.strength-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 4px;
+  background: #e2e8f0;
+  transition: background-color 0.2s ease;
+}
+
+.strength-bar.active {
+  background: #d29a39;
+}
+
+.strength-bar.strong {
+  background: #258a80;
+}
+
+/* Requirement checklist */
+
+.password-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.password-rule {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.password-rule > span:first-child {
+  min-width: 15px;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.password-rule.rule-passed {
+  color: #16704f;
+}
+
+.password-rule.rule-error {
+  color: #b42318;
+}
+
+.password-match {
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.password-match.success {
+  color: #16704f;
+}
+
+.password-match.mismatch {
+  color: #b42318;
+}
+
+/* Submit button and feedback */
 
 .register-button {
   width: 100%;
@@ -41,9 +183,20 @@
   border: none;
   border-radius: 4px;
   background: #183b56;
-  color: white;
+  color: #ffffff;
   font-size: 16px;
+  font-family: inherit;
   cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.register-button:hover:not(:disabled) {
+  background: #285474;
+}
+
+.register-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .register-error {
@@ -54,4 +207,17 @@
 .register-message {
   color: #276749;
   font-size: 14px;
+}
+
+@media (max-width: 500px) {
+  .register-form {
+    padding: 22px 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .strength-bar,
+  .register-button {
+    transition: none;
+  }
 }
